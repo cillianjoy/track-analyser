@@ -14,4 +14,5 @@
 ## Expectations for PRs
 - Add or update tests for new features.
 - Keep functions pure where practical. Avoid global state.
-- Document new CLI flags in README and RUNBOOK.
+- Document new CLI flags in [README.md](README.md) and keep the [RUNBOOK CLI flag reference](RUNBOOK.md#cli-flag-reference) current.
+- Update operational procedures in the [RUNBOOK](RUNBOOK.md) when workflows change (e.g. smoke tests, maintenance tasks).

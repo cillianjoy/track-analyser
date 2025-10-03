@@ -46,6 +46,8 @@ The command performs deterministic beat, structure, loudness and harmonic analys
 
 Use `--no-stems` to disable the optional demucs integration when torch is unavailable.
 
+Refer to the [CLI flag reference](RUNBOOK.md#cli-flag-reference) for a complete description of the available options and operational guidance.
+
 ## Python API
 
 ```python
@@ -92,4 +94,6 @@ Then analyse the generated file:
 track-analyser analyse examples/tiny_click_120.wav --out reports/smoke --plots --json --csv
 ```
 
-Because `examples/` is ignored by git, the rendered WAV stays local to your machine.
+Because `examples/` is ignored by git, the rendered WAV stays local to your machine. The full [smoke test runbook](RUNBOOK.md#smoke-test-end-to-end-cli-run) captures the checklist and post-run validation steps.
+
+Additional operational procedures—such as dependency refreshes and packaging validation—are documented in the [maintenance workflows](RUNBOOK.md#maintenance-workflows) section of the runbook.
