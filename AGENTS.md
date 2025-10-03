@@ -5,7 +5,7 @@
 - Install package: `pip install -e .`
 - Run tests: `pytest -q`
 - Before the CLI smoke test, generate the click track: `python scripts/make_tiny_click.py`
-- Run CLI smoke test: `track-analyser analyse examples/tiny_click_120.wav --out reports/smoke --plots --json --csv`
+- Run CLI smoke test: `track-analyser analyse examples/tiny_click_120.wav --output reports/smoke`
 
 ## Code style
 - Python 3.11
