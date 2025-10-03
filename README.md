@@ -79,8 +79,17 @@ The current regression tests focus on two critical paths:
 
 When you add features, please extend or supplement these tests so we maintain coverage of the most important behaviours.
 
-For a quick manual smoke test, you can also run the CLI end-to-end:
+For a quick manual smoke test, you can also run the CLI end-to-end. First generate
+the example click track (this writes to the git-ignored `examples/` directory):
+
+```bash
+python scripts/make_tiny_click.py
+```
+
+Then analyse the generated file:
 
 ```bash
 track-analyser analyse examples/tiny_click_120.wav --out reports/smoke --plots --json --csv
 ```
+
+Because `examples/` is ignored by git, the rendered WAV stays local to your machine.
