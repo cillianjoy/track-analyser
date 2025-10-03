@@ -56,3 +56,31 @@ print(result.beat.bpm, result.harmonic.key_estimate)
 ```
 
 The returned dataclass `TrackAnalysisResult` bundles per-module analysis outputs, making it straightforward to persist or run further downstream tasks.
+
+## Testing
+
+Install the project in your environment (editable installs are fine) along with the test dependencies:
+
+```bash
+pip install -e .
+pip install pytest
+```
+
+From the repository root, execute the automated suite with:
+
+```bash
+pytest -q
+```
+
+The current regression tests focus on two critical paths:
+
+- `tests/test_loudness.py` checks the integrated-loudness regression to guard against changes in analysis math or default parameters.
+- `tests/test_rendering_outputs.py` verifies the JSON renderer to ensure the structured artefacts remain stable.
+
+When you add features, please extend or supplement these tests so we maintain coverage of the most important behaviours.
+
+For a quick manual smoke test, you can also run the CLI end-to-end:
+
+```bash
+track-analyser analyse examples/tiny_click_120.wav --out reports/smoke --plots --json --csv
+```
