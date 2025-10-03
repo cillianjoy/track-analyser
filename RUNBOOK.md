@@ -38,7 +38,7 @@ Use this checklist after modifying the analysis pipeline or rendering code, or b
    ```
 3. Run the CLI against the generated file:
    ```bash
-   track-analyser analyse examples/tiny_click_120.wav --output reports/smoke --plots --json --csv
+   track-analyser analyse examples/tiny_click_120.wav --output reports/smoke
    ```
 4. Inspect the console output for the success summary, then spot-check the artefacts written to `reports/smoke` (especially the JSON and plots) to confirm the pipeline executed end-to-end.
 

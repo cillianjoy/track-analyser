@@ -91,7 +91,7 @@ python scripts/make_tiny_click.py
 Then analyse the generated file:
 
 ```bash
-track-analyser analyse examples/tiny_click_120.wav --out reports/smoke --plots --json --csv
+track-analyser analyse examples/tiny_click_120.wav --output reports/smoke
 ```
 
 Because `examples/` is ignored by git, the rendered WAV stays local to your machine. The full [smoke test runbook](RUNBOOK.md#smoke-test-end-to-end-cli-run) captures the checklist and post-run validation steps.
