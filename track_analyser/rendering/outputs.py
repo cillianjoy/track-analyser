@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -45,8 +45,8 @@ def _write_json(result: TrackAnalysisResult, path: Path) -> None:
         "downbeat": {
             "source": result.downbeat.source if result.downbeat else None,
         },
-        "structure": [segment.__dict__ for segment in result.structure.segments],
-        "loudness": result.loudness.__dict__,
+        "structure": [asdict(segment) for segment in result.structure.segments],
+        "loudness": asdict(result.loudness),
         "harmonic": {
             "key": result.harmonic.key_estimate.key,
             "key_confidence": result.harmonic.key_estimate.confidence,
