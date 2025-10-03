@@ -26,7 +26,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-madmom = ["madmom==0.16.1"]
+madmom = ["madmom==0.16.1", "Cython>=0.29"]
 torch = ["torch==2.2.2"]
 demucs = ["demucs==4.0.0"]
 
