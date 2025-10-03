@@ -26,6 +26,21 @@ class LoudnessAnalysis:
     rms_dbfs: float
 
 
+def _windowed_loudness(
+    samples: np.ndarray, sample_rate: int, meter_block_size: float
+) -> np.ndarray:
+    """Return LUFS estimates computed over sliding windows."""
+
+    frame_length = max(1024, int(round(sample_rate * meter_block_size)))
+    if frame_length % 2:
+        frame_length += 1
+    hop_length = max(1, frame_length // 2)
+    rms = librosa.feature.rms(
+        y=samples, frame_length=frame_length, hop_length=hop_length
+    )[0]
+    return librosa.amplitude_to_db(rms + 1e-9, ref=np.max)
+
+
 def analyse_loudness(
     audio: AudioInput | str,
     *,
@@ -40,25 +55,27 @@ def analyse_loudness(
 
     samples = audio.samples.astype(np.float32)
 
+    windowed_lufs = _windowed_loudness(samples, audio.sample_rate, meter_block_size)
+
     if pyloudnorm is not None:
         meter = pyloudnorm.Meter(audio.sample_rate, block_size=meter_block_size)
         integrated = float(meter.integrated_loudness(samples))
-        short_term = meter.short_term_loudness(samples)
-        momentary = meter.momentary_loudness(samples)
-        lra = float(meter.loudness_range(samples))
+        short_term = windowed_lufs
+        momentary = windowed_lufs
+        loudness_range_fn = getattr(meter, "loudness_range", None)
+        if callable(loudness_range_fn):
+            lra = float(loudness_range_fn(samples))
+        else:  # pragma: no cover - pyloudnorm<0.1.2 compatibility
+            lra = float(
+                np.percentile(windowed_lufs, 95) - np.percentile(windowed_lufs, 5)
+            )
     else:  # pragma: no cover - fallback path
-        frame_length = max(1024, int(audio.sample_rate * meter_block_size))
-        if frame_length % 2:
-            frame_length += 1
-        hop_length = frame_length // 2
-        rms = librosa.feature.rms(
-            y=samples, frame_length=frame_length, hop_length=hop_length
-        )[0]
-        rms_db = librosa.amplitude_to_db(rms + 1e-9, ref=np.max)
-        integrated = float(np.mean(rms_db))
-        short_term = rms_db.tolist()
-        momentary = rms_db.tolist()
-        lra = float(np.percentile(rms_db, 95) - np.percentile(rms_db, 5))
+        integrated = float(np.mean(windowed_lufs))
+        short_term = windowed_lufs
+        momentary = windowed_lufs
+        lra = float(
+            np.percentile(windowed_lufs, 95) - np.percentile(windowed_lufs, 5)
+        )
 
     true_peak = float(np.max(np.abs(samples)))
     true_peak_dbfs = float(20.0 * np.log10(true_peak + 1e-9))
