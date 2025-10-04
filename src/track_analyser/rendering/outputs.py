@@ -48,8 +48,12 @@ def _write_json(result: TrackAnalysisResult, path: Path) -> None:
         "structure": [asdict(segment) for segment in result.structure.segments],
         "loudness": asdict(result.loudness),
         "harmonic": {
-            "key": result.harmonic.key_estimate.key,
-            "key_confidence": result.harmonic.key_estimate.confidence,
+            "key": result.harmonic.primary_key.key,
+            "key_confidence": result.harmonic.primary_key.confidence,
+            "secondary_key": asdict(result.harmonic.secondary_key),
+            "chord_change_points": [
+                asdict(point) for point in result.harmonic.chord_change_points
+            ],
         },
     }
     path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
@@ -80,6 +84,18 @@ def _write_csv_tables(result: TrackAnalysisResult, output_dir: Path) -> None:
         ]
     )
     chords.to_csv(output_dir / "chords.csv", index=False)
+
+    changes = pd.DataFrame(
+        [
+            {
+                "time": point.time,
+                "strength": point.strength,
+            }
+            for point in result.harmonic.chord_change_points
+        ],
+        columns=["time", "strength"],
+    )
+    changes.to_csv(output_dir / "chord_changes.csv", index=False)
 
     loudness = pd.DataFrame(
         {
@@ -137,7 +153,8 @@ def _write_html_report(result: TrackAnalysisResult, path: Path) -> None:
         <h1>Track Analysis Report</h1>
         <p><strong>Audio:</strong> {result.audio.path or "In-memory"} ({result.audio.duration:.2f}s)</p>
         <p><strong>BPM:</strong> {result.beat.bpm:.2f} (confidence {result.beat.confidence:.2f})</p>
-        <p><strong>Key:</strong> {result.harmonic.key_estimate.key} (confidence {result.harmonic.key_estimate.confidence:.2f})</p>
+        <p><strong>Key:</strong> {result.harmonic.primary_key.key} (confidence {result.harmonic.primary_key.confidence:.2f})</p>
+        <p><strong>Second choice:</strong> {result.harmonic.secondary_key.key} (confidence {result.harmonic.secondary_key.confidence:.2f})</p>
         <h2>Structure</h2>
         <table>
             <tr><th>Label</th><th>Start</th><th>End</th><th>Confidence</th></tr>
