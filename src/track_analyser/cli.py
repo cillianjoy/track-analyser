@@ -67,11 +67,15 @@ def analyze_command(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        stages = 6  # audio, beats, structure, loudness, harmonic, render
         with Progress(transient=True) as progress:
-            task = progress.add_task("Analysing", total=stages)
+            task = progress.add_task("Analysing", total=0)
+
+            stages_seen = 0
 
             def _advance(_: str) -> None:
+                nonlocal stages_seen
+                stages_seen += 1
+                progress.update(task, total=stages_seen)
                 progress.advance(task)
 
             result = analyse_track(
