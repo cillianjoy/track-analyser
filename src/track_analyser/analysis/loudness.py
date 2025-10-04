@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 import librosa
+from scipy import signal
 
 from ..utils import AudioInput, seed_everything
 
@@ -38,7 +39,62 @@ def _windowed_loudness(
     rms = librosa.feature.rms(
         y=samples, frame_length=frame_length, hop_length=hop_length
     )[0]
-    return librosa.amplitude_to_db(rms + 1e-9, ref=np.max)
+    return librosa.amplitude_to_db(rms + 1e-9, ref=1.0)
+
+
+def measure_loudness(
+    samples: np.ndarray,
+    sample_rate: int,
+    meter_block_size: float = 0.400,
+) -> Tuple[float, List[float], List[float], float]:
+    """Measure LUFS and loudness range metrics for ``samples``."""
+
+    samples = np.asarray(samples, dtype=np.float32)
+    if samples.ndim != 1:
+        raise ValueError("measure_loudness expects mono audio samples")
+
+    short_term = _windowed_loudness(samples, sample_rate, meter_block_size=3.0)
+    momentary = _windowed_loudness(samples, sample_rate, meter_block_size=meter_block_size)
+
+    if pyloudnorm is not None:
+        meter = pyloudnorm.Meter(sample_rate, block_size=meter_block_size)
+        integrated = float(meter.integrated_loudness(samples))
+        loudness_range_fn = getattr(meter, "loudness_range", None)
+        if callable(loudness_range_fn):
+            lra = float(loudness_range_fn(samples))
+        else:  # pragma: no cover - pyloudnorm<0.1.2 compatibility
+            lra = float(
+                np.percentile(momentary, 95) - np.percentile(momentary, 5)
+            )
+    else:  # pragma: no cover - fallback path
+        integrated = float(np.mean(momentary))
+        lra = float(np.percentile(momentary, 95) - np.percentile(momentary, 5))
+
+    return (
+        integrated,
+        np.asarray(short_term, dtype=float).tolist(),
+        np.asarray(momentary, dtype=float).tolist(),
+        lra,
+    )
+
+
+def true_peak_dbtp(samples: np.ndarray, sample_rate: int, *, oversample: int = 8) -> float:
+    """Estimate dB true peak using polyphase oversampling."""
+
+    if oversample < 1:
+        raise ValueError("oversample must be >= 1")
+
+    samples = np.asarray(samples, dtype=np.float32)
+    if samples.ndim != 1:
+        raise ValueError("true_peak_dbtp expects mono audio samples")
+
+    if oversample == 1:
+        upsampled = samples
+    else:
+        upsampled = signal.resample_poly(samples, oversample, 1)
+
+    peak = float(np.max(np.abs(upsampled)))
+    return float(20.0 * np.log10(peak + 1e-12))
 
 
 def analyse_loudness(
@@ -55,36 +111,18 @@ def analyse_loudness(
 
     samples = audio.samples.astype(np.float32)
 
-    windowed_lufs = _windowed_loudness(samples, audio.sample_rate, meter_block_size)
-
-    if pyloudnorm is not None:
-        meter = pyloudnorm.Meter(audio.sample_rate, block_size=meter_block_size)
-        integrated = float(meter.integrated_loudness(samples))
-        short_term = windowed_lufs
-        momentary = windowed_lufs
-        loudness_range_fn = getattr(meter, "loudness_range", None)
-        if callable(loudness_range_fn):
-            lra = float(loudness_range_fn(samples))
-        else:  # pragma: no cover - pyloudnorm<0.1.2 compatibility
-            lra = float(
-                np.percentile(windowed_lufs, 95) - np.percentile(windowed_lufs, 5)
-            )
-    else:  # pragma: no cover - fallback path
-        integrated = float(np.mean(windowed_lufs))
-        short_term = windowed_lufs
-        momentary = windowed_lufs
-        lra = float(np.percentile(windowed_lufs, 95) - np.percentile(windowed_lufs, 5))
-
-    true_peak = float(np.max(np.abs(samples)))
-    true_peak_dbfs = float(20.0 * np.log10(true_peak + 1e-9))
+    integrated, short_term, momentary, loudness_range = measure_loudness(
+        samples, audio.sample_rate, meter_block_size
+    )
+    true_peak_dbfs = true_peak_dbtp(samples, audio.sample_rate)
     rms_val = float(np.sqrt(np.mean(samples**2)))
-    rms_dbfs = float(20.0 * np.log10(rms_val + 1e-9))
+    rms_dbfs = float(20.0 * np.log10(rms_val + 1e-12))
 
     return LoudnessAnalysis(
         integrated_lufs=integrated,
-        short_term_lufs=np.asarray(short_term, dtype=float).tolist(),
-        momentary_lufs=np.asarray(momentary, dtype=float).tolist(),
-        loudness_range=lra,
+        short_term_lufs=short_term,
+        momentary_lufs=momentary,
+        loudness_range=loudness_range,
         true_peak_dbfs=true_peak_dbfs,
         rms_dbfs=rms_dbfs,
     )
