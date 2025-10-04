@@ -31,7 +31,18 @@ def test_render_all_writes_summary_json(tmp_path):
         bpm=120.0, beat_times=[0.0, 0.5], beat_frames=[0, 220], confidence=0.9
     )
     structure = StructureAnalysis(
-        segments=[StructuralSegment(label="A", start=0.0, end=1.0, confidence=1.0)],
+        segments=[
+            StructuralSegment(
+                label="A",
+                category="intro",
+                start=0.0,
+                end=1.0,
+                confidence=1.0,
+                percussive_energy=0.0,
+                harmonic_energy=0.0,
+                percussive_ratio=0.0,
+            )
+        ],
         novelty_curve=[0.1, 0.2],
     )
     loudness = LoudnessAnalysis(
@@ -84,3 +95,18 @@ def test_render_all_writes_summary_json(tmp_path):
     assert harmonic_data["key"] == "C major"
     assert harmonic_data["secondary_key"]["key"] == "G major"
     assert harmonic_data["chord_change_points"], "Change points should be exported"
+
+    sections_path = tmp_path / "sections.csv"
+    assert sections_path.exists(), "sections.csv should be rendered"
+    sections = pd.read_csv(sections_path)
+    expected_columns = {
+        "label",
+        "category",
+        "start",
+        "end",
+        "confidence",
+        "percussive_energy",
+        "harmonic_energy",
+        "percussive_ratio",
+    }
+    assert expected_columns.issubset(set(sections.columns))
