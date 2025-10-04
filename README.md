@@ -32,6 +32,12 @@ pip install .[torch]
 pip install .[demucs]
 ```
 
+On Windows, the `diffq` dependency used by the Demucs extra requires the
+[Microsoft Visual C++ Build Tools 14.0+](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
+Install the build tools first (for example via the Visual Studio Build Tools installer
+with the "Desktop development with C++" workload) before running the
+`pip install .[demucs]` command so the extension modules compile successfully.
+
 **Windows/Conda note:** install `Cython>=0.29` before running the extra install, then invoke `pip install --use-pep517 .[madmom]` (or set `PIP_USE_PEP517=1`) so pip sticks to the modern build backend. The upstream `madmom` sdist imports Cython during its build and otherwise falls back to legacy `setup_requires`, which fails under Windows/Conda. See the [troubleshooting guidance](RUNBOOK.md#troubleshooting) if issues persist.
 
 When using Conda on Windows, make sure the `audio` environment is active before running `pip install` so that binaries such as `numpy` and `librosa` resolve correctly.
