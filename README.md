@@ -42,9 +42,9 @@ Once installed, the CLI is available as `track-analyser`:
 track-analyser analyze path/to/audio.wav --out reports/song
 ```
 
-The command performs deterministic beat, structure, loudness and harmonic analysis. It exports JSON summaries, CSV tables, PNG plots, HTML reports and MIDI hook/bass suggestions.
+The command performs deterministic beat, structure, loudness and harmonic analysis. It exports `report.json`, `beats.csv`, `sections.csv`, optional PNG visualisations (waveform with beats, tempogram, novelty curve, LTAS and stereo width), HTML reports and MIDI hook/bass suggestions.
 
-Pass `--plots`, `--json` or `--csv` to relocate the generated plots, summary JSON or CSV tables to custom destinations. When omitted, those artefacts are written inside the `--out` directory.
+Pass `--plots`, `--json` or `--csv` to control the generated artefacts. Provide a custom path to move them elsewhere or pass `skip`/`none` to disable that output entirely. When omitted, the artefacts are written inside the `--out` directory.
 
 Refer to the [CLI flag reference](RUNBOOK.md#cli-flag-reference) for a complete description of the available options and operational guidance.
 
@@ -77,7 +77,8 @@ pytest -q
 The current regression tests focus on two critical paths:
 
 - `tests/test_loudness.py` checks the integrated-loudness regression to guard against changes in analysis math or default parameters.
-- `tests/test_rendering_outputs.py` verifies the JSON renderer to ensure the structured artefacts remain stable.
+- `tests/test_rendering_outputs.py` verifies the report renderer to ensure the structured artefacts remain stable.
+- `tests/test_cli.py::test_analyze_generates_requested_outputs` exercises the CLI end-to-end to confirm the requested files are created.
 
 When you add features, please extend or supplement these tests so we maintain coverage of the most important behaviours.
 

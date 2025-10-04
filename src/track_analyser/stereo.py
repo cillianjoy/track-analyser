@@ -53,6 +53,9 @@ def _ensure_stereo_array(audio: AudioInput) -> np.ndarray:
         return stereo
     if stereo.shape[1] == 2:
         return np.transpose(stereo)
+    if stereo.shape[0] < 2:
+        first = stereo[0]
+        return np.vstack([first, first])
     return stereo[:2]
 
 

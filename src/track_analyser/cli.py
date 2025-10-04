@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, Iterable
+from typing import Iterable, Tuple
 
 import click
 from rich.console import Console
 from rich.progress import Progress
 
 from .pipeline import analyse_track
+from . import report as report_module
+from .rendering import outputs as outputs_module
 
-JSON_FILENAME = "summary.json"
-CSV_FILENAMES = ("segments.csv", "chords.csv", "loudness.csv")
-PLOT_FILENAMES = ("loudness.png", "spectral_balance.png")
+
+SKIP_VALUES = {"skip", "none", "false", "off"}
 
 
 @click.group()
@@ -34,31 +35,31 @@ def cli() -> None:
 )
 @click.option(
     "--plots",
-    "plots_dir",
-    type=click.Path(file_okay=False, path_type=Path),
+    "plots_option",
+    type=str,
     default=None,
-    help="Optional directory to relocate generated plot images.",
+    help="Generate plot PNGs. Provide a directory path or 'skip' to disable.",
 )
 @click.option(
     "--json",
-    "json_path",
-    type=click.Path(dir_okay=False, path_type=Path),
+    "json_option",
+    type=str,
     default=None,
-    help="Optional path for the summary JSON file.",
+    help="Generate report.json. Provide a file path or 'skip' to disable.",
 )
 @click.option(
     "--csv",
-    "csv_dir",
-    type=click.Path(file_okay=False, path_type=Path),
+    "csv_option",
+    type=str,
     default=None,
-    help="Optional directory to relocate CSV tables.",
+    help="Generate CSV tables. Provide a directory path or 'skip' to disable.",
 )
 def analyze_command(
     audio_path: Path,
     output_dir: Path,
-    plots_dir: Path | None,
-    json_path: Path | None,
-    csv_dir: Path | None,
+    plots_option: str | None,
+    json_option: str | None,
+    csv_option: str | None,
 ) -> None:
     """Analyse ``audio_path`` and render artefacts to disk."""
 
@@ -75,85 +76,81 @@ def analyze_command(
 
             result = analyse_track(
                 audio_path,
-                output_dir=output_dir,
                 progress_callback=_advance,
             )
-        destinations = _relocate_outputs(
-            output_dir, plots_dir=plots_dir, json_path=json_path, csv_dir=csv_dir
+        report_request = _build_report_request(
+            output_dir,
+            plots_option=plots_option,
+            json_option=json_option,
+            csv_option=csv_option,
         )
+        report_outputs = outputs_module.render_all(
+            result,
+            output_dir,
+            report_request=report_request,
+        )
+        _advance("render")
         console.print(
             f"[green]Analysis completed[/green] -> {output_dir}\n"
             f"BPM: {result.beat.bpm:.2f}, Key: {result.harmonic.key_estimate.key}\n"
-            f"JSON: {destinations['json']}\n"
-            f"CSV: {destinations['csv']}\n"
-            f"Plots: {destinations['plots']}"
+            f"JSON: {_format_json_destination(report_outputs.json)}\n"
+            f"CSV: {_format_collection(report_outputs.csv.values())}\n"
+            f"Plots: {_format_collection(report_outputs.plots.values())}"
         )
     except Exception as exc:  # pragma: no cover - CLI guard
         console.print(f"[red]Error:[/red] {exc}")
         raise SystemExit(1) from exc
 
 
-def _relocate_outputs(
+def _build_report_request(
     output_dir: Path,
     *,
-    plots_dir: Path | None,
-    json_path: Path | None,
-    csv_dir: Path | None,
-) -> Dict[str, Path]:
-    """Return the final locations for rendered artefacts, moving files if needed."""
-
-    destinations: Dict[str, Path] = {}
-
-    json_source = output_dir / JSON_FILENAME
-    if json_path and json_source.exists():
-        _move_file(json_source, json_path)
-        destinations["json"] = json_path
-    else:
-        destinations["json"] = json_source
-
-    csv_destination_dir = csv_dir or output_dir
-    if csv_dir:
-        _move_named_files(output_dir, csv_destination_dir, CSV_FILENAMES)
-    destinations["csv"] = csv_destination_dir
-
-    plots_destination_dir = plots_dir or output_dir
-    if plots_dir:
-        _move_named_files(output_dir, plots_destination_dir, PLOT_FILENAMES)
-    destinations["plots"] = plots_destination_dir
-
-    return destinations
+    plots_option: str | None,
+    json_option: str | None,
+    csv_option: str | None,
+) -> report_module.ReportRequest:
+    include_plots, plots_path = _parse_option(plots_option)
+    include_json, json_path = _parse_option(json_option)
+    include_csv, csv_path = _parse_option(csv_option)
+    return report_module.ReportRequest(
+        include_plots=include_plots,
+        include_json=include_json,
+        include_csv=include_csv,
+        plots_dir=_resolve_path(output_dir, plots_path) if plots_path else None,
+        json_path=_resolve_path(output_dir, json_path) if json_path else None,
+        csv_dir=_resolve_path(output_dir, csv_path) if csv_path else None,
+    )
 
 
-def _move_named_files(
-    base_dir: Path, destination_dir: Path, filenames: Iterable[str]
-) -> None:
-    """Move a collection of files from ``base_dir`` into ``destination_dir``."""
-
-    destination_dir.mkdir(parents=True, exist_ok=True)
-    for name in filenames:
-        source = base_dir / name
-        if not source.exists():
-            continue
-        destination = destination_dir / name
-        _move_file(source, destination)
+def _parse_option(value: str | None) -> Tuple[bool, Path | None]:
+    if value is None:
+        return True, None
+    lowered = value.lower()
+    if lowered in SKIP_VALUES:
+        return False, None
+    return True, Path(value)
 
 
-def _move_file(source: Path, destination: Path) -> None:
-    """Move ``source`` to ``destination``, overwriting if necessary."""
+def _resolve_path(output_dir: Path, path: Path) -> Path:
+    if path.is_absolute():
+        return path
+    return (output_dir / path).resolve()
 
-    try:
-        if source.resolve() == destination.resolve(strict=False):
-            return
-    except FileNotFoundError:
-        # ``destination`` may not exist yet; fall back to simple path comparison.
-        if source == destination:
-            return
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    if destination.exists():
-        if destination.is_dir():
-            raise IsADirectoryError(destination)
-        destination.unlink()
-    source.replace(destination)
+
+def _format_json_destination(path: Path | None) -> str:
+    if path is None:
+        return "skipped"
+    return str(path)
+
+
+def _format_collection(paths: Iterable[Path]) -> str:
+    realised = list(paths)
+    if not realised:
+        return "skipped"
+    parents = {p.parent for p in realised}
+    if len(parents) == 1:
+        return str(parents.pop())
+    return ", ".join(str(p) for p in realised)
 
 
 def main() -> None:

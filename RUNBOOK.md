@@ -15,13 +15,13 @@ Operational procedures and checklists for `track-analyser`.
 | --- | --- | --- | --- |
 | `audio_path` | Path to an audio file | _required_ | Input track to analyse. Must exist and point to a readable audio file. |
 | `--out` | Directory path | _required_ | Destination folder for generated artefacts (HTML report, MIDI files and any artefacts not explicitly redirected). Created automatically if missing. |
-| `--plots` | Directory path | _optional_ | Relocate generated plot images to this directory. Defaults to the `--out` directory when omitted. |
-| `--json` | File path | _optional_ | Relocate the summary JSON file to this path. Defaults to `summary.json` inside `--out`. |
-| `--csv` | Directory path | _optional_ | Relocate CSV tables to this directory. Defaults to the `--out` directory when omitted. |
+| `--plots` | Directory path or `skip` | _optional_ | Generate PNG plots (waveform + beats, tempogram, novelty, LTAS, stereo width). Provide a directory to store them or `skip`/`none` to disable. Defaults to the `--out` directory when omitted. |
+| `--json` | File path or `skip` | _optional_ | Generate `report.json`. Provide a file path to relocate it or `skip`/`none` to disable. Defaults to `report.json` inside `--out`. |
+| `--csv` | Directory path or `skip` | _optional_ | Generate `beats.csv` and `sections.csv`. Provide a directory to relocate them or `skip`/`none` to disable. Defaults to the `--out` directory when omitted. |
 
 **Operational notes**
 - The CLI reports rich progress output and a success summary containing BPM and key estimates plus the final artefact locations.
-- Redirecting JSON/CSV/plot outputs is useful when integrating with automated pipelines that expect files in dedicated directories.
+- Redirecting or disabling JSON/CSV/plot outputs is useful when integrating with automated pipelines that expect files in dedicated directories.
 - Artefacts not covered by the dedicated flags (HTML and MIDI) always remain inside `--out`.
 
 ## Smoke test: end-to-end CLI run
@@ -41,7 +41,7 @@ Use this checklist after modifying the analysis pipeline or rendering code, or b
    ```bash
    track-analyser analyze examples/tiny_click_120.wav --out reports/smoke
    ```
-4. Inspect the console output for the success summary, then spot-check the artefacts written to `reports/smoke` (especially the JSON and plots) to confirm the pipeline executed end-to-end.
+4. Inspect the console output for the success summary, then spot-check the artefacts written to `reports/smoke` (especially `report.json`, `beats.csv`, `sections.csv` and the plots) to confirm the pipeline executed end-to-end.
 
 ## Maintenance workflows
 

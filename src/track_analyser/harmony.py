@@ -271,7 +271,8 @@ def _stereo_image(audio: AudioInput) -> StereoImage:
     samples = (
         audio.stereo_samples if audio.stereo_samples is not None else audio.samples
     )
-    if samples.ndim == 1:
+    samples = np.asarray(samples, dtype=np.float32)
+    if samples.ndim == 1 or samples.shape[0] < 2:
         return StereoImage(correlation=1.0, balance=0.0)
 
     left = samples[0]
