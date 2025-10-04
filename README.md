@@ -74,7 +74,7 @@ From the repository root, execute the automated suite with:
 pytest -q
 ```
 
-The current regression tests focus on two critical paths:
+The current regression tests focus on three critical paths:
 
 - `tests/test_loudness.py` checks the integrated-loudness regression to guard against changes in analysis math or default parameters.
 - `tests/test_rendering_outputs.py` verifies the report renderer to ensure the structured artefacts remain stable.
