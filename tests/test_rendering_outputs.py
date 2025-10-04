@@ -1,15 +1,8 @@
 from __future__ import annotations
 
 import json
-import sys
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
 
 from track_analyser.analysis.beats import BeatAnalysis
 from track_analyser.analysis.harmonic import (
@@ -32,7 +25,9 @@ def test_render_all_writes_summary_json(tmp_path):
         sample_rate=4_410,
         path="dummy.wav",
     )
-    beat = BeatAnalysis(bpm=120.0, beat_times=[0.0, 0.5], beat_frames=[0, 220], confidence=0.9)
+    beat = BeatAnalysis(
+        bpm=120.0, beat_times=[0.0, 0.5], beat_frames=[0, 220], confidence=0.9
+    )
     structure = StructureAnalysis(
         segments=[StructuralSegment(label="A", start=0.0, end=1.0, confidence=1.0)],
         novelty_curve=[0.1, 0.2],
@@ -75,4 +70,6 @@ def test_render_all_writes_summary_json(tmp_path):
     with summary_path.open("r", encoding="utf-8") as fh:
         data = json.load(fh)
     assert data["structure"], "Structure entries should be serialised"
-    assert "integrated_lufs" in data["loudness"], "Loudness dataclass should be serialised"
+    assert "integrated_lufs" in data["loudness"], (
+        "Loudness dataclass should be serialised"
+    )

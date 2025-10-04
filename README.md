@@ -39,12 +39,12 @@ When using Conda on Windows, make sure the `audio` environment is active before 
 Once installed, the CLI is available as `track-analyser`:
 
 ```bash
-track-analyser analyse path/to/audio.wav --output reports/song --use-stems
+track-analyser analyze path/to/audio.wav --out reports/song
 ```
 
 The command performs deterministic beat, structure, loudness and harmonic analysis. It exports JSON summaries, CSV tables, PNG plots, HTML reports and MIDI hook/bass suggestions.
 
-Use `--no-stems` to disable the optional demucs integration when torch is unavailable.
+Pass `--plots`, `--json` or `--csv` to relocate the generated plots, summary JSON or CSV tables to custom destinations. When omitted, those artefacts are written inside the `--out` directory.
 
 Refer to the [CLI flag reference](RUNBOOK.md#cli-flag-reference) for a complete description of the available options and operational guidance.
 
@@ -91,7 +91,7 @@ python scripts/make_tiny_click.py
 Then analyse the generated file:
 
 ```bash
-track-analyser analyse examples/tiny_click_120.wav --output reports/smoke
+track-analyser analyze examples/tiny_click_120.wav --out reports/smoke
 ```
 
 Because `examples/` is ignored by git, the rendered WAV stays local to your machine. The full [smoke test runbook](RUNBOOK.md#smoke-test-end-to-end-cli-run) captures the checklist and post-run validation steps.

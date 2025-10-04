@@ -33,5 +33,9 @@ demucs = ["demucs==4.0.0"]
 [project.scripts]
 track-analyser = "track_analyser.cli:main"
 
+[tool.setuptools]
+package-dir = {"" = "src"}
+
 [tool.setuptools.packages.find]
+where = ["src"]
 include = ["track_analyser*"]
