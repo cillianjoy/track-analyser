@@ -2,17 +2,13 @@
 
 from __future__ import annotations
 
-import json
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import pandas as pd
 
+from .. import report as report_module
 from ..pipeline import TrackAnalysisResult
 
 try:  # pragma: no cover - optional dependency
@@ -21,171 +17,18 @@ except ImportError:  # pragma: no cover - fallback minimal MIDI writer
     mido = None  # type: ignore[assignment]
 
 
-def render_all(result: TrackAnalysisResult, output_dir: Path) -> None:
+def render_all(
+    result: TrackAnalysisResult,
+    output_dir: Path,
+    *,
+    report_request: report_module.ReportRequest | None = None,
+) -> report_module.ReportOutputs:
     output_dir.mkdir(parents=True, exist_ok=True)
-    _write_json(result, output_dir / "summary.json")
-    _write_csv_tables(result, output_dir)
-    _write_plots(result, output_dir)
+    report_outputs = report_module.generate_report(result, output_dir, report_request)
     _write_html_report(result, output_dir / "report.html")
     _write_midi(result.harmonic.hook_suggestion, output_dir / "hook.mid")
     _write_midi(result.harmonic.bass_suggestion, output_dir / "bass.mid")
-
-
-def _write_json(result: TrackAnalysisResult, path: Path) -> None:
-    summary = {
-        "audio": {
-            "path": result.audio.path,
-            "sample_rate": result.audio.sample_rate,
-            "duration": result.audio.duration,
-        },
-        "beat": {
-            "bpm": result.beat.bpm,
-            "confidence": result.beat.confidence,
-        },
-        "downbeat": {
-            "source": result.downbeat.source if result.downbeat else None,
-        },
-        "structure": [asdict(segment) for segment in result.structure.segments],
-        "loudness": asdict(result.loudness),
-        "harmonic": {
-            "key": result.harmonic.primary_key.key,
-            "key_confidence": result.harmonic.primary_key.confidence,
-            "secondary_key": asdict(result.harmonic.secondary_key),
-            "chord_change_points": [
-                asdict(point) for point in result.harmonic.chord_change_points
-            ],
-        },
-        "features": {
-            "ltas": result.features.ltas.as_dict(),
-            "spectral_centroid": {
-                "mean": result.features.spectral_centroid.mean,
-                "median": result.features.spectral_centroid.median,
-                "series": result.features.spectral_centroid.as_list,
-            },
-            "spectral_rolloff": {
-                "mean": result.features.spectral_rolloff.mean,
-                "median": result.features.spectral_rolloff.median,
-                "series": result.features.spectral_rolloff.as_list,
-            },
-        },
-        "stereo": {
-            "mid_rms": result.stereo.mid_rms,
-            "side_rms": result.stereo.side_rms,
-            "correlation": result.stereo.correlation,
-            "width": result.stereo.width.as_dict(),
-        },
-    }
-    path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
-
-
-def _write_csv_tables(result: TrackAnalysisResult, output_dir: Path) -> None:
-    segments = pd.DataFrame(
-        [
-            {
-                "label": seg.label,
-                "category": seg.category,
-                "start": seg.start,
-                "end": seg.end,
-                "confidence": seg.confidence,
-                "percussive_energy": seg.percussive_energy,
-                "harmonic_energy": seg.harmonic_energy,
-                "percussive_ratio": seg.percussive_ratio,
-            }
-            for seg in result.structure.segments
-        ]
-    )
-    segments.to_csv(output_dir / "sections.csv", index=False)
-    segments[["label", "start", "end", "confidence"]].to_csv(
-        output_dir / "segments.csv", index=False
-    )
-
-    chords = pd.DataFrame(
-        [
-            {
-                "time": hint.time,
-                "chord": hint.chord,
-                "confidence": hint.confidence,
-            }
-            for hint in result.harmonic.chord_hints
-        ]
-    )
-    chords.to_csv(output_dir / "chords.csv", index=False)
-
-    changes = pd.DataFrame(
-        [
-            {
-                "time": point.time,
-                "strength": point.strength,
-            }
-            for point in result.harmonic.chord_change_points
-        ],
-        columns=["time", "strength"],
-    )
-    changes.to_csv(output_dir / "chord_changes.csv", index=False)
-
-    loudness = pd.DataFrame(
-        {
-            "short_term_lufs": result.loudness.short_term_lufs,
-            "momentary_lufs": result.loudness.momentary_lufs,
-        }
-    )
-    loudness.to_csv(output_dir / "loudness.csv", index=False)
-
-
-def _write_plots(result: TrackAnalysisResult, output_dir: Path) -> None:
-    plt.figure(figsize=(10, 6))
-    plt.plot(result.loudness.short_term_lufs, label="Short-term LUFS")
-    plt.plot(result.loudness.momentary_lufs, label="Momentary LUFS", alpha=0.7)
-    plt.title("Loudness over time")
-    plt.xlabel("Frame")
-    plt.ylabel("LUFS")
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(output_dir / "loudness.png")
-    plt.close()
-
-    plt.figure(figsize=(10, 4))
-    plt.bar(
-        ["Low", "Mid", "High"],
-        [
-            result.harmonic.spectral_balance.low_band,
-            result.harmonic.spectral_balance.mid_band,
-            result.harmonic.spectral_balance.high_band,
-        ],
-    )
-    plt.title("Spectral balance")
-    plt.tight_layout()
-    plt.savefig(output_dir / "spectral_balance.png")
-    plt.close()
-
-    plt.figure(figsize=(10, 4))
-    plt.semilogx(
-        result.features.ltas.frequencies,
-        result.features.ltas.magnitude,
-    )
-    plt.title("Long-term average spectrum")
-    plt.xlabel("Frequency (Hz)")
-    plt.ylabel("Magnitude")
-    plt.tight_layout()
-    plt.savefig(output_dir / "ltas.png")
-    plt.close()
-
-    plt.figure(figsize=(10, 4))
-    plt.plot(
-        result.features.spectral_centroid.as_list,
-        label="Spectral centroid",
-    )
-    plt.plot(
-        result.features.spectral_rolloff.as_list,
-        label="Spectral roll-off",
-    )
-    plt.title("Spectral descriptors")
-    plt.xlabel("Frame")
-    plt.ylabel("Frequency (Hz)")
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(output_dir / "spectral_descriptors.png")
-    plt.close()
+    return report_outputs
 
 
 def _write_html_report(result: TrackAnalysisResult, path: Path) -> None:

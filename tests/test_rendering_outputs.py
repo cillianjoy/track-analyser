@@ -23,6 +23,7 @@ from track_analyser.features import (
 )
 from track_analyser.pipeline import TrackAnalysisResult
 from track_analyser.rendering.outputs import render_all
+from track_analyser.report import ReportOutputs
 from track_analyser.stereo import StereoAnalysis, StereoWidthBands
 from track_analyser.utils import AudioInput
 
@@ -104,11 +105,13 @@ def test_render_all_writes_summary_json(tmp_path):
         stems=None,
     )
 
-    render_all(result, tmp_path)
+    report_outputs = render_all(result, tmp_path)
+    assert isinstance(report_outputs, ReportOutputs)
 
-    summary_path = tmp_path / "summary.json"
-    assert summary_path.exists(), "summary.json should be rendered"
-    with summary_path.open("r", encoding="utf-8") as fh:
+    report_path = tmp_path / "report.json"
+    assert report_outputs.json == report_path
+    assert report_path.exists(), "report.json should be rendered"
+    with report_path.open("r", encoding="utf-8") as fh:
         data = json.load(fh)
     assert data["structure"], "Structure entries should be serialised"
     assert "integrated_lufs" in data["loudness"], (
@@ -123,7 +126,8 @@ def test_render_all_writes_summary_json(tmp_path):
     stereo_data = data["stereo"]
     assert stereo_data["mid_rms"] == 0.5
 
-    sections_path = tmp_path / "sections.csv"
+    assert "sections" in report_outputs.csv
+    sections_path = report_outputs.csv["sections"]
     assert sections_path.exists(), "sections.csv should be rendered"
     sections = pd.read_csv(sections_path)
     expected_columns = {
@@ -137,3 +141,19 @@ def test_render_all_writes_summary_json(tmp_path):
         "percussive_ratio",
     }
     assert expected_columns.issubset(set(sections.columns))
+
+    assert "beats" in report_outputs.csv
+    beats_path = report_outputs.csv["beats"]
+    beats = pd.read_csv(beats_path)
+    assert set(beats.columns) == {"index", "time", "frame", "is_downbeat"}
+
+    expected_plots = {
+        "waveform_beats",
+        "tempogram",
+        "novelty",
+        "ltas",
+        "stereo_width",
+    }
+    assert expected_plots.issubset(set(report_outputs.plots))
+    for plot in expected_plots:
+        assert report_outputs.plots[plot].exists(), f"{plot} plot should exist"
