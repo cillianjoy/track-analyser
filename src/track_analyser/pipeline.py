@@ -8,6 +8,8 @@ from typing import Callable, Optional
 
 from .analysis import beats, loudness, structure, stems
 from . import harmony
+from . import features
+from . import stereo
 from .utils import AudioInput, coerce_audio, DEFAULT_SEED
 from .tempo import beat_grid, estimate_bpm
 
@@ -22,6 +24,8 @@ class TrackAnalysisResult:
     structure: structure.StructureAnalysis
     loudness: loudness.LoudnessAnalysis
     harmonic: harmony.HarmonyAnalysis
+    features: features.FeatureAnalysis
+    stereo: stereo.StereoAnalysis
     stems: Optional[stems.StemBundle] = None
 
 
@@ -80,6 +84,14 @@ def analyse_track(
     if progress_callback:
         progress_callback("harmonic")
 
+    feature_result = features.analyse_features(audio)
+    if progress_callback:
+        progress_callback("features")
+
+    stereo_result = stereo.analyse_stereo(audio)
+    if progress_callback:
+        progress_callback("stereo")
+
     stem_result: Optional[stems.StemBundle] = None
     if use_stems:
         stem_result = stems.separate_stems(audio.path, output_dir, seed=seed)
@@ -93,6 +105,8 @@ def analyse_track(
         structure=structure_result,
         loudness=loudness_result,
         harmonic=harmonic_result,
+        features=feature_result,
+        stereo=stereo_result,
         stems=stem_result,
     )
 
