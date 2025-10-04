@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional
 
-from .analysis import beats, harmonic, loudness, structure, stems
+from .analysis import beats, loudness, structure, stems
+from . import harmony
 from .utils import AudioInput, coerce_audio, DEFAULT_SEED
 from .tempo import beat_grid, estimate_bpm
 
@@ -20,7 +21,7 @@ class TrackAnalysisResult:
     downbeat: Optional[beats.DownbeatAnalysis]
     structure: structure.StructureAnalysis
     loudness: loudness.LoudnessAnalysis
-    harmonic: harmonic.HarmonicAnalysis
+    harmonic: harmony.HarmonyAnalysis
     stems: Optional[stems.StemBundle] = None
 
 
@@ -73,7 +74,7 @@ def analyse_track(
     if progress_callback:
         progress_callback("loudness")
 
-    harmonic_result = harmonic.analyse_harmonic(
+    harmonic_result = harmony.analyse_harmony(
         audio, beat_result, downbeat_result, seed=seed
     )
     if progress_callback:

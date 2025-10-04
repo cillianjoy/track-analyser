@@ -5,8 +5,10 @@ import numpy as np
 import pandas as pd
 
 from track_analyser.analysis.beats import BeatAnalysis
-from track_analyser.analysis.harmonic import (
-    HarmonicAnalysis,
+from track_analyser.harmony import (
+    ChordChangePoint,
+    ChordHint,
+    HarmonyAnalysis,
     KeyEstimate,
     MidiSuggestion,
     SpectralBalance,
@@ -42,13 +44,18 @@ def test_render_all_writes_summary_json(tmp_path):
     )
     spectral_balance = SpectralBalance(low_band=0.3, mid_band=0.4, high_band=0.3)
     stereo_image = StereoImage(correlation=1.0, balance=0.0)
-    key_estimate = KeyEstimate(key="C major", confidence=0.95)
-    empty_notes = pd.DataFrame(columns=["start", "duration", "pitch", "velocity"])
-    harmonic = HarmonicAnalysis(
+    primary_key = KeyEstimate(key="C major", confidence=0.95)
+    secondary_key = KeyEstimate(key="G major", confidence=0.65)
+    empty_notes = pd.DataFrame(
+        columns=["start", "duration", "pitch", "velocity", "channel"]
+    )
+    harmonic = HarmonyAnalysis(
         spectral_balance=spectral_balance,
         stereo_image=stereo_image,
-        key_estimate=key_estimate,
-        chord_hints=[],
+        primary_key=primary_key,
+        secondary_key=secondary_key,
+        chord_hints=[ChordHint(time=0.0, chord="Cmaj", confidence=0.9)],
+        chord_change_points=[ChordChangePoint(time=0.5, strength=0.8)],
         hook_suggestion=MidiSuggestion(name="hook", notes=empty_notes),
         bass_suggestion=MidiSuggestion(name="bass", notes=empty_notes),
     )
@@ -73,3 +80,7 @@ def test_render_all_writes_summary_json(tmp_path):
     assert "integrated_lufs" in data["loudness"], (
         "Loudness dataclass should be serialised"
     )
+    harmonic_data = data["harmonic"]
+    assert harmonic_data["key"] == "C major"
+    assert harmonic_data["secondary_key"]["key"] == "G major"
+    assert harmonic_data["chord_change_points"], "Change points should be exported"
