@@ -8,6 +8,7 @@ from typing import Callable, Optional
 
 from .analysis import beats, harmonic, loudness, structure, stems
 from .utils import AudioInput, coerce_audio, DEFAULT_SEED
+from .tempo import beat_grid, estimate_bpm
 
 
 @dataclass
@@ -52,7 +53,15 @@ def analyse_track(
     if progress_callback:
         progress_callback("audio")
 
-    beat_result, downbeat_result = beats.analyse_beats(audio, seed=seed)
+    grid = beat_grid(audio.samples, audio.sample_rate)
+    bpm = estimate_bpm(audio.samples, audio.sample_rate)
+    beat_result = beats.build_beat_analysis(
+        bpm,
+        grid["time"].to_numpy(),
+        audio.sample_rate,
+        grid=grid,
+    )
+    downbeat_result = beats.analyse_downbeats(audio, beat_result, seed=seed)
     if progress_callback:
         progress_callback("beats")
 
