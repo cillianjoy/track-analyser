@@ -33,7 +33,7 @@ Use this checklist after modifying the analysis pipeline or rendering code, or b
    pip install -r requirements.txt
    pip install -e .
    ```
-   **Windows/Conda note:** when installing optional extras like `pip install .[madmom]` for beat-tracking refinement, run `pip install Cython>=0.29` first. The upstream `madmom` sdist imports Cython during its build and fails without the pre-installed dependency.
+   **Windows/Conda note:** when installing optional extras like `pip install .[madmom]` for beat-tracking refinement, run `pip install Cython>=0.29` first and then force pip to use the modern backend with `pip install --use-pep517 .[madmom]` (or `PIP_USE_PEP517=1`). The upstream `madmom` sdist imports Cython during its build and otherwise falls back to legacy `setup_requires`, which fails without the pre-installed dependency.
 2. Generate the sample click track (writes to the git-ignored `examples/` directory):
    ```bash
    python scripts/make_tiny_click.py
@@ -65,3 +65,9 @@ Use this checklist after modifying the analysis pipeline or rendering code, or b
 1. Remove historical analysis artefacts from `reports/` if disk usage grows large.
 2. Archive important reports before deletion.
 3. Ensure the `reports/` directory remains git-ignored to prevent accidental commits of generated content.
+
+## Troubleshooting
+
+### Windows/Conda: `madmom` extra install fails with `setup_requires`
+- Symptom: running `pip install .[madmom]` during optional extra installation raises an error about unsupported `setup_requires` when building the upstream `madmom` sdist.
+- Fix: pre-install `Cython>=0.29`, then re-run the extra install with `pip install --use-pep517 .[madmom]` (or export `PIP_USE_PEP517=1`) so pip avoids the legacy backend and honours the dependency. This mirrors the guidance in the [README](README.md#installation).
