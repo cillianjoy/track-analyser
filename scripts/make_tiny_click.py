@@ -1,4 +1,5 @@
 """Generate a tiny click track for smoke-testing the analyser CLI."""
+
 from __future__ import annotations
 
 import argparse
@@ -16,7 +17,9 @@ ACCENT_FREQUENCY = 1500.0
 REGULAR_FREQUENCY = 1000.0
 
 
-def _synth_click(frequency: float, amplitude: float, sample_rate: int, duration: float) -> np.ndarray:
+def _synth_click(
+    frequency: float, amplitude: float, sample_rate: int, duration: float
+) -> np.ndarray:
     """Return a short, exponentially decaying sine click."""
     sample_count = int(duration * sample_rate)
     times = np.linspace(0.0, duration, sample_count, endpoint=False)

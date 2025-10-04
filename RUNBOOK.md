@@ -9,19 +9,20 @@ Operational procedures and checklists for `track-analyser`.
 
 ## CLI flag reference
 
-### `track-analyser analyse`
+### `track-analyser analyze`
 
 | Argument / flag | Type | Default | Description |
 | --- | --- | --- | --- |
 | `audio_path` | Path to an audio file | _required_ | Input track to analyse. Must exist and point to a readable audio file. |
-| `--output` / `--output-dir` | Directory path | _required_ | Destination folder for generated artefacts (JSON, CSV, plots, HTML, MIDI). Created automatically if missing. |
-| `--use-stems / --no-stems` | Boolean flag | `--no-stems` | Toggle Demucs-assisted stem separation. Enable when the Demucs (and Torch) extras are installed. Disable to skip the extra dependency and speed up runs. |
-| `--seed` | Integer | `42` | Deterministic random seed shared with the analysis pipeline. Override to explore non-deterministic paths or to reproduce a reported issue exactly. |
+| `--out` | Directory path | _required_ | Destination folder for generated artefacts (HTML report, MIDI files and any artefacts not explicitly redirected). Created automatically if missing. |
+| `--plots` | Directory path | _optional_ | Relocate generated plot images to this directory. Defaults to the `--out` directory when omitted. |
+| `--json` | File path | _optional_ | Relocate the summary JSON file to this path. Defaults to `summary.json` inside `--out`. |
+| `--csv` | Directory path | _optional_ | Relocate CSV tables to this directory. Defaults to the `--out` directory when omitted. |
 
 **Operational notes**
-- The CLI reports rich progress output and a success summary containing BPM and key estimates.
-- When Demucs is unavailable, keep `--no-stems` to avoid errors. The command runs without stems by default.
-- The `--seed` option is surfaced primarily for reproducing debugging scenarios; normal operations should keep the default.
+- The CLI reports rich progress output and a success summary containing BPM and key estimates plus the final artefact locations.
+- Redirecting JSON/CSV/plot outputs is useful when integrating with automated pipelines that expect files in dedicated directories.
+- Artefacts not covered by the dedicated flags (HTML and MIDI) always remain inside `--out`.
 
 ## Smoke test: end-to-end CLI run
 
@@ -38,7 +39,7 @@ Use this checklist after modifying the analysis pipeline or rendering code, or b
    ```
 3. Run the CLI against the generated file:
    ```bash
-   track-analyser analyse examples/tiny_click_120.wav --output reports/smoke
+   track-analyser analyze examples/tiny_click_120.wav --out reports/smoke
    ```
 4. Inspect the console output for the success summary, then spot-check the artefacts written to `reports/smoke` (especially the JSON and plots) to confirm the pipeline executed end-to-end.
 

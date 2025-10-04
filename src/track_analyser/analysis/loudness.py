@@ -73,9 +73,7 @@ def analyse_loudness(
         integrated = float(np.mean(windowed_lufs))
         short_term = windowed_lufs
         momentary = windowed_lufs
-        lra = float(
-            np.percentile(windowed_lufs, 95) - np.percentile(windowed_lufs, 5)
-        )
+        lra = float(np.percentile(windowed_lufs, 95) - np.percentile(windowed_lufs, 5))
 
     true_peak = float(np.max(np.abs(samples)))
     true_peak_dbfs = float(20.0 * np.log10(true_peak + 1e-9))
