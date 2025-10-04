@@ -32,6 +32,8 @@ pip install .[torch]
 pip install .[demucs]
 ```
 
+**Windows/Conda note:** install `Cython>=0.29` before running `pip install .[madmom]`. The upstream `madmom` sdist imports Cython during its build, so pre-installing it avoids failures while the extra resolves dependencies.
+
 When using Conda on Windows, make sure the `audio` environment is active before running `pip install` so that binaries such as `numpy` and `librosa` resolve correctly.
 
 ## Command line usage

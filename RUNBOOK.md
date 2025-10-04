@@ -33,6 +33,7 @@ Use this checklist after modifying the analysis pipeline or rendering code, or b
    pip install -r requirements.txt
    pip install -e .
    ```
+   **Windows/Conda note:** when installing optional extras like `pip install .[madmom]` for beat-tracking refinement, run `pip install Cython>=0.29` first. The upstream `madmom` sdist imports Cython during its build and fails without the pre-installed dependency.
 2. Generate the sample click track (writes to the git-ignored `examples/` directory):
    ```bash
    python scripts/make_tiny_click.py
