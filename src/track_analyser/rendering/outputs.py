@@ -64,14 +64,21 @@ def _write_csv_tables(result: TrackAnalysisResult, output_dir: Path) -> None:
         [
             {
                 "label": seg.label,
+                "category": seg.category,
                 "start": seg.start,
                 "end": seg.end,
                 "confidence": seg.confidence,
+                "percussive_energy": seg.percussive_energy,
+                "harmonic_energy": seg.harmonic_energy,
+                "percussive_ratio": seg.percussive_ratio,
             }
             for seg in result.structure.segments
         ]
     )
-    segments.to_csv(output_dir / "segments.csv", index=False)
+    segments.to_csv(output_dir / "sections.csv", index=False)
+    segments[["label", "start", "end", "confidence"]].to_csv(
+        output_dir / "segments.csv", index=False
+    )
 
     chords = pd.DataFrame(
         [
