@@ -15,14 +15,11 @@ except ImportError as exc:  # pragma: no cover - library is required for the pac
     raise RuntimeError("librosa is required for track_analyser") from exc
 
 try:  # pragma: no cover - optional dependency guard
-    import soundfile as sf  # noqa: F401
-except ImportError:  # pragma: no cover - fall back to audioread via librosa
-    sf = None  # type: ignore[assignment]
-
-try:  # pragma: no cover - optional dependency guard
     import resampy
 except ImportError:  # pragma: no cover - resampy is optional, librosa can resample
     resampy = None  # type: ignore[assignment]
+
+from .io import load_audio
 
 DEFAULT_SR = 44_100
 DEFAULT_SEED = 13_370
@@ -104,7 +101,7 @@ def coerce_audio(
 
     if isinstance(source, (str, Path)):
         path = str(source)
-        samples, sr = librosa.load(path, sr=None, mono=False)
+        samples, sr, _meta = load_audio(path, mono=False)
         stereo: Optional[np.ndarray]
         if samples.ndim > 1:
             stereo = np.asarray(samples, dtype=np.float32)
