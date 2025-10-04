@@ -55,6 +55,25 @@ def _write_json(result: TrackAnalysisResult, path: Path) -> None:
                 asdict(point) for point in result.harmonic.chord_change_points
             ],
         },
+        "features": {
+            "ltas": result.features.ltas.as_dict(),
+            "spectral_centroid": {
+                "mean": result.features.spectral_centroid.mean,
+                "median": result.features.spectral_centroid.median,
+                "series": result.features.spectral_centroid.as_list,
+            },
+            "spectral_rolloff": {
+                "mean": result.features.spectral_rolloff.mean,
+                "median": result.features.spectral_rolloff.median,
+                "series": result.features.spectral_rolloff.as_list,
+            },
+        },
+        "stereo": {
+            "mid_rms": result.stereo.mid_rms,
+            "side_rms": result.stereo.side_rms,
+            "correlation": result.stereo.correlation,
+            "width": result.stereo.width.as_dict(),
+        },
     }
     path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
 
@@ -139,6 +158,35 @@ def _write_plots(result: TrackAnalysisResult, output_dir: Path) -> None:
     plt.savefig(output_dir / "spectral_balance.png")
     plt.close()
 
+    plt.figure(figsize=(10, 4))
+    plt.semilogx(
+        result.features.ltas.frequencies,
+        result.features.ltas.magnitude,
+    )
+    plt.title("Long-term average spectrum")
+    plt.xlabel("Frequency (Hz)")
+    plt.ylabel("Magnitude")
+    plt.tight_layout()
+    plt.savefig(output_dir / "ltas.png")
+    plt.close()
+
+    plt.figure(figsize=(10, 4))
+    plt.plot(
+        result.features.spectral_centroid.as_list,
+        label="Spectral centroid",
+    )
+    plt.plot(
+        result.features.spectral_rolloff.as_list,
+        label="Spectral roll-off",
+    )
+    plt.title("Spectral descriptors")
+    plt.xlabel("Frame")
+    plt.ylabel("Frequency (Hz)")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(output_dir / "spectral_descriptors.png")
+    plt.close()
+
 
 def _write_html_report(result: TrackAnalysisResult, path: Path) -> None:
     rows = "".join(
@@ -162,6 +210,19 @@ def _write_html_report(result: TrackAnalysisResult, path: Path) -> None:
         <p><strong>BPM:</strong> {result.beat.bpm:.2f} (confidence {result.beat.confidence:.2f})</p>
         <p><strong>Key:</strong> {result.harmonic.primary_key.key} (confidence {result.harmonic.primary_key.confidence:.2f})</p>
         <p><strong>Second choice:</strong> {result.harmonic.secondary_key.key} (confidence {result.harmonic.secondary_key.confidence:.2f})</p>
+        <h2>Spectral features</h2>
+        <p><strong>Mean spectral centroid:</strong> {result.features.spectral_centroid.mean:.2f} Hz</p>
+        <p><strong>Mean spectral roll-off:</strong> {result.features.spectral_rolloff.mean:.2f} Hz</p>
+        <h2>Stereo image</h2>
+        <p><strong>Mid RMS:</strong> {result.stereo.mid_rms:.4f}</p>
+        <p><strong>Side RMS:</strong> {result.stereo.side_rms:.4f}</p>
+        <p><strong>Correlation:</strong> {result.stereo.correlation:.2f}</p>
+        <table>
+            <tr><th>Band</th><th>Width</th></tr>
+            <tr><td>Low</td><td>{result.stereo.width.low:.3f}</td></tr>
+            <tr><td>Mid</td><td>{result.stereo.width.mid:.3f}</td></tr>
+            <tr><td>High</td><td>{result.stereo.width.high:.3f}</td></tr>
+        </table>
         <h2>Structure</h2>
         <table>
             <tr><th>Label</th><th>Start</th><th>End</th><th>Confidence</th></tr>

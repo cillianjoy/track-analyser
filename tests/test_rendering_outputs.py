@@ -16,8 +16,14 @@ from track_analyser.harmony import (
 )
 from track_analyser.analysis.loudness import LoudnessAnalysis
 from track_analyser.analysis.structure import StructuralSegment, StructureAnalysis
+from track_analyser.features import (
+    FeatureAnalysis,
+    FeatureSeries,
+    LongTermAverageSpectrum,
+)
 from track_analyser.pipeline import TrackAnalysisResult
 from track_analyser.rendering.outputs import render_all
+from track_analyser.stereo import StereoAnalysis, StereoWidthBands
 from track_analyser.utils import AudioInput
 
 
@@ -71,6 +77,21 @@ def test_render_all_writes_summary_json(tmp_path):
         bass_suggestion=MidiSuggestion(name="bass", notes=empty_notes),
     )
 
+    features = FeatureAnalysis(
+        ltas=LongTermAverageSpectrum(
+            frequencies=np.array([0.0, 1_000.0], dtype=np.float32),
+            magnitude=np.array([1.0, 0.5], dtype=np.float32),
+        ),
+        spectral_centroid=FeatureSeries(values=np.array([100.0, 200.0])),
+        spectral_rolloff=FeatureSeries(values=np.array([5_000.0, 6_000.0])),
+    )
+    stereo = StereoAnalysis(
+        mid_rms=0.5,
+        side_rms=0.0,
+        correlation=1.0,
+        width=StereoWidthBands(low=0.0, mid=0.0, high=0.0),
+    )
+
     result = TrackAnalysisResult(
         audio=audio,
         beat=beat,
@@ -78,6 +99,8 @@ def test_render_all_writes_summary_json(tmp_path):
         structure=structure,
         loudness=loudness,
         harmonic=harmonic,
+        features=features,
+        stereo=stereo,
         stems=None,
     )
 
@@ -95,6 +118,10 @@ def test_render_all_writes_summary_json(tmp_path):
     assert harmonic_data["key"] == "C major"
     assert harmonic_data["secondary_key"]["key"] == "G major"
     assert harmonic_data["chord_change_points"], "Change points should be exported"
+    feature_data = data["features"]
+    assert feature_data["spectral_centroid"]["mean"] == np.mean([100.0, 200.0])
+    stereo_data = data["stereo"]
+    assert stereo_data["mid_rms"] == 0.5
 
     sections_path = tmp_path / "sections.csv"
     assert sections_path.exists(), "sections.csv should be rendered"
