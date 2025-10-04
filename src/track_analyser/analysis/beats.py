@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
 import numpy as np
+import pandas as pd
 
 try:  # pragma: no cover - optional dependency
     import madmom
@@ -19,6 +20,7 @@ except ImportError:  # pragma: no cover - optional dependency not installed
 import librosa
 
 from ..utils import AudioInput, seed_everything
+from ..tempo import beat_grid as compute_beat_grid, estimate_bpm
 
 
 @dataclass(slots=True)
@@ -29,6 +31,7 @@ class BeatAnalysis:
     beat_times: List[float]
     beat_frames: List[int]
     confidence: float
+    grid: Optional[pd.DataFrame] = None
 
 
 @dataclass(slots=True)
@@ -63,26 +66,52 @@ def analyse_beats(
     if not isinstance(audio, AudioInput):
         raise TypeError("analyse_beats expects an AudioInput instance")
 
-    onset_env = librosa.onset.onset_strength(y=audio.samples, sr=audio.sample_rate)
-    tempo, beat_frames = librosa.beat.beat_track(
-        onset_envelope=onset_env,
-        sr=audio.sample_rate,
+    grid = compute_beat_grid(audio.samples, audio.sample_rate, hop_length=hop_length)
+    bpm = estimate_bpm(audio.samples, audio.sample_rate, hop_length=hop_length)
+    beat_result = build_beat_analysis(
+        bpm,
+        grid["time"].to_numpy(),
+        audio.sample_rate,
         hop_length=hop_length,
-        tightness=100.0,
-    )
-    beat_times = librosa.frames_to_time(
-        beat_frames, sr=audio.sample_rate, hop_length=hop_length
-    )
-    confidence = _compute_confidence(beat_times)
-    beat_result = BeatAnalysis(
-        bpm=float(tempo),
-        beat_times=beat_times.tolist(),
-        beat_frames=beat_frames.astype(int).tolist(),
-        confidence=confidence,
+        grid=grid,
     )
 
-    downbeat_result = _analyse_downbeats(audio, beat_result, hop_length, seed)
+    downbeat_result = analyse_downbeats(
+        audio, beat_result, hop_length=hop_length, seed=seed
+    )
     return beat_result, downbeat_result
+
+
+def build_beat_analysis(
+    bpm: float,
+    beat_times: np.ndarray,
+    sr: int,
+    *,
+    hop_length: int = 512,
+    grid: Optional[pd.DataFrame] = None,
+) -> BeatAnalysis:
+    beat_times = np.asarray(beat_times, dtype=float)
+    beat_frames = librosa.time_to_frames(beat_times, sr=sr, hop_length=hop_length)
+    confidence = _compute_confidence(beat_times)
+    return BeatAnalysis(
+        bpm=float(bpm),
+        beat_times=beat_times.astype(float).tolist(),
+        beat_frames=beat_frames.astype(int).tolist(),
+        confidence=confidence,
+        grid=grid.copy() if grid is not None else None,
+    )
+
+
+def analyse_downbeats(
+    audio: AudioInput | str,
+    beat_result: BeatAnalysis,
+    *,
+    hop_length: int = 512,
+    seed: int,
+) -> Optional[DownbeatAnalysis]:
+    if not isinstance(audio, AudioInput):
+        raise TypeError("analyse_downbeats expects an AudioInput instance")
+    return _analyse_downbeats(audio, beat_result, hop_length, seed)
 
 
 def _analyse_downbeats(
